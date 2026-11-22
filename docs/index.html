@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="เวิร์กช็อป AIoT ภาษาไทย ทดลองจำแนกสภาพห้องด้วย Cucumber RS และ k-NN บนเบราว์เซอร์">
+  <meta name="theme-color" content="#f5f8f7">
+  <title>Microclimate Lab | ห้องทดลอง AIoT</title>
+  <link rel="stylesheet" href="assets/styles.css">
+  <script defer src="assets/model.js"></script>
+  <script defer src="assets/app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">ข้ามไปเนื้อหา</a>
+  <header class="site-header">
+    <div class="frame header-inner">
+      <a class="brand" href="#top"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>Microclimate Lab</a>
+      <nav aria-label="เมนูหลัก">
+        <a href="#lab">ห้องทดลอง</a><a href="#lessons">บทเรียน</a><a href="#setup">ต่อบอร์ดจริง</a>
+      </nav>
+    </div>
+  </header>
+  <main id="main" class="frame">
+    <section class="hero" id="top" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow"><span></span> CN466 / AIoT WORKSHOP</p>
+        <h1 id="hero-title">ให้ AI อ่าน<br><em>สภาพห้อง</em></h1>
+        <p>วัดอุณหภูมิและความชื้นด้วยบอร์ด Cucumber แล้วทดลองให้โมเดล k-NN จำแนกว่าในห้องสบาย ร้อน หรืออับชื้น</p>
+        <a class="button hero-button" href="#lab">เริ่มทดลอง</a>
+      </div>
+      <figure class="hero-diagram" aria-label="ลำดับการทำงานจากเซนเซอร์ผ่าน USB Serial ไปยังโมเดล k-NN บนพีซี">
+        <div class="diagram-top"><span>DATA FLOW</span><span class="diagram-led"></span></div>
+        <div class="diagram-nodes">
+          <div class="node"><span class="node-icon sensor-icon" aria-hidden="true"></span><strong>HTS221</strong><small>Cucumber RS</small></div>
+          <div class="node"><span class="node-icon serial-icon" aria-hidden="true"></span><strong>USB Serial</strong><small>115200 baud</small></div>
+          <div class="node"><span class="node-icon model-icon" aria-hidden="true"></span><strong>k-NN</strong><small>PC Browser</small></div>
+        </div>
+        <div class="diagram-bottom"><span>TEMP / HUMIDITY</span><span>CLASSIFICATION</span></div>
+      </figure>
+    </section>
+
+    <section id="lab" class="section" aria-labelledby="lab-title">
+      <div class="section-head">
+        <div><p class="kicker">INTERACTIVE LAB</p><h2 id="lab-title">ห้องทดลอง</h2></div>
+        <p>เลือกสถานการณ์จำลอง หรือรับข้อมูลสดจากบอร์ดผ่าน USB</p>
+      </div>
+      <div class="control-bar">
+        <div class="mode-group" role="group" aria-label="แหล่งข้อมูล">
+          <button id="demo-mode" type="button" aria-pressed="true">ข้อมูลจำลอง</button>
+          <button id="serial-mode" type="button" aria-pressed="false">เชื่อมต่อบอร์ด</button>
+        </div>
+        <label id="scenario-control" class="select-label">สถานการณ์
+          <select id="scenario">
+            <option value="balanced">ห้องสบาย</option>
+            <option value="warm">ห้องร้อน</option>
+            <option value="humid">ห้องอับชื้น</option>
+          </select>
+        </label>
+        <p id="connection-status" class="connection-status" role="status"><span></span>ข้อมูลจำลอง · อัปเดตทุก 2 วินาที</p>
+      </div>
+      <div class="metrics">
+        <article class="metric"><div class="metric-head"><span class="metric-icon temp-icon" aria-hidden="true"></span><h3>อุณหภูมิ</h3></div><p><strong id="temperature">–</strong> <span>°C</span></p></article>
+        <article class="metric"><div class="metric-head"><span class="metric-icon humidity-icon" aria-hidden="true"></span><h3>ความชื้นสัมพัทธ์</h3></div><p><strong id="humidity">–</strong> <span>%RH</span></p></article>
+        <article class="metric result-metric" id="result-card"><div class="metric-head"><span class="metric-icon ai-icon" aria-hidden="true">✧</span><h3>ผลจำแนกจาก AI</h3></div><p id="result" class="result-value">–</p><small id="votes">รอข้อมูล</small></article>
+      </div>
+      <div class="lab-grid">
+        <article class="panel chart-panel">
+          <div class="panel-head"><div><h3>แนวโน้มเซนเซอร์</h3><p>สูงสุด 24 ตัวอย่างล่าสุด</p></div><div class="legend"><span>°C</span><span>%RH</span></div></div>
+          <div class="chart-area"><canvas id="chart" role="img" aria-label="กราฟแนวโน้มอุณหภูมิและความชื้นแยกสเกล"><p>ดูข้อมูลล่าสุดได้ในตารางด้านล่าง</p></canvas></div>
+          <details class="table-disclosure">
+            <summary>ดูข้อมูลล่าสุดในตาราง</summary>
+            <table><thead><tr><th scope="col">ลำดับ</th><th scope="col">°C</th><th scope="col">%RH</th></tr></thead><tbody id="readings-table"></tbody></table>
+          </details>
+        </article>
+        <article class="panel explain-panel">
+          <div class="panel-head"><div><h3>ทำไม AI ตอบแบบนี้</h3><p>เพื่อนบ้านใกล้ที่สุด 3 ตัวอย่าง</p></div><span class="tag">k = 3</span></div>
+          <p id="reason">เลือกรูปแบบข้อมูลเพื่อดูเหตุผลของโมเดล</p>
+          <ol id="neighbors" class="neighbors"></ol>
+          <p class="footnote">คะแนนคือจำนวนเสียงจากเพื่อนบ้าน ใช้ชุดข้อมูลสังเคราะห์เพื่อการเรียนรู้</p>
+        </article>
+      </div>
+      <noscript><p class="notice">เปิด JavaScript เพื่อใช้ห้องทดลองและแบบทดสอบ</p></noscript>
+    </section>
+
+    <section id="lessons" class="section" aria-labelledby="lessons-title">
+      <div class="section-head">
+        <div><p class="kicker">GUIDED LESSONS</p><h2 id="lessons-title">จากเซนเซอร์ถึงการตัดสินใจ</h2></div>
+        <p>สำหรับนักศึกษาที่กำลังเริ่มเรียน AIoT</p>
+      </div>
+      <div class="lesson-grid">
+        <article class="panel lesson">
+          <h3>อ่านค่าจากสิ่งแวดล้อม</h3>
+          <p>HTS221 บนบอร์ด Cucumber RS วัดอุณหภูมิเป็น °C และความชื้นสัมพัทธ์เป็น %RH เฟิร์มแวร์อ่านค่าผ่าน I²C แล้วส่ง JSON หนึ่งบรรทัดทาง USB Serial ทุก 2 วินาที</p>
+          <pre><code>{"temperature":25.4,"humidity":51.2}</code></pre>
+          <p>ลองสลับสถานการณ์จำลอง แล้วสังเกตว่าค่าใดเปลี่ยนมากที่สุด</p>
+        </article>
+        <article class="panel lesson">
+          <h3>จำแนกด้วย k-NN</h3>
+          <p>โมเดลเก็บตัวอย่างพร้อมป้ายกำกับ 18 จุด ปรับสเกลสองตัวแปรด้วยค่าเฉลี่ยและส่วนเบี่ยงเบนมาตรฐานของชุดฝึก แล้วหาระยะ Euclidean ถึงตัวอย่างแต่ละจุด</p>
+          <p>เพื่อนบ้าน 3 จุดที่ใกล้ที่สุดโหวตเลือกคำตอบ หากคะแนนเสมอกันใช้ป้ายของจุดที่ใกล้ที่สุด ลองเทียบผลกับรายการเพื่อนบ้านในห้องทดลอง</p>
+          <details><summary>ดูชุดข้อมูลฝึก</summary><div id="training-table" class="training-table"></div></details>
+        </article>
+        <article class="panel lesson">
+          <h3>ตรวจสอบผลของโมเดล</h3>
+          <p>ตั้งสมมติฐานก่อนสลับไปโหมดห้องอับชื้น แล้วเทียบผลกับเพื่อนบ้าน 3 จุด จากนั้นลองเทียบค่าจากบอร์ดในสองตำแหน่งที่มีสภาพต่างกัน</p>
+          <p>ตัวอย่างฝึกเป็นข้อมูลสังเคราะห์ ห้องจริงอาจร้อนและชื้นพร้อมกัน แต่โมเดลนี้แสดงหนึ่งป้ายเสมอตามตัวอย่างที่รู้จัก ควรเก็บข้อมูลจริงพร้อมป้ายกำกับและแยกชุดทดสอบก่อนนำไปใช้งานจริง</p>
+        </article>
+      </div>
+      <form class="panel quiz" id="quiz">
+        <fieldset>
+          <legend>เช็กความเข้าใจ</legend>
+          <p>ถ้าเพื่อนบ้านใกล้ที่สุด 3 จุดโหวต “อับชื้น” 2 เสียง กับ “สบาย” 1 เสียง โมเดลจะตอบอะไร?</p>
+          <div class="quiz-options">
+            <label><input type="radio" name="vote" value="balanced" required> สบาย</label>
+            <label><input type="radio" name="vote" value="warm"> ร้อน</label>
+            <label><input type="radio" name="vote" value="humid"> อับชื้น</label>
+          </div>
+        </fieldset>
+        <button class="button primary-button" type="submit">ตรวจคำตอบ</button>
+        <p id="quiz-result" role="status"></p>
+      </form>
+    </section>
+
+    <section id="setup" class="section" aria-labelledby="setup-title">
+      <div class="section-head">
+        <div><p class="kicker">HARDWARE SETUP</p><h2 id="setup-title">ต่อบอร์ดจริง</h2></div>
+        <p>Cucumber RS รุ่น ESP32-S2 พร้อม HTS221</p>
+      </div>
+      <div class="setup-grid">
+        <article class="panel setup-card">
+          <h3>อัปโหลดเฟิร์มแวร์</h3>
+          <ol>
+            <li>เปิดโฟลเดอร์โปรเจกต์ใน VS Code ที่ติดตั้ง PlatformIO แล้วเสียบบอร์ดเข้าพอร์ต <strong>Debug</strong> ด้วยสาย USB ที่รับส่งข้อมูลได้</li>
+            <li>เลือก <strong>PlatformIO → Project Tasks → cucumber → Upload</strong> หรือรันคำสั่งด้านล่างจากโฟลเดอร์โปรเจกต์</li>
+            <li>ตรวจว่า Serial Monitor ที่ 115200 baud แสดง JSON อุณหภูมิและความชื้น แล้วปิด Monitor เพื่อให้เว็บใช้พอร์ตได้</li>
+          </ol>
+          <pre><code>pio run -e cucumber -t upload</code></pre>
+        </article>
+        <article class="panel setup-card">
+          <h3>เปิด dashboard บนพีซี</h3>
+          <ol>
+            <li>เปิดหน้าเว็บผ่าน HTTPS หรือ localhost ด้วย Chrome หรือ Edge บนเดสก์ท็อป</li>
+            <li>กด <strong>เชื่อมต่อบอร์ด</strong> ในห้องทดลอง แล้วเลือกพอร์ต COM ของบอร์ด</li>
+            <li>รอค่าจริงและผลจำแนก เมื่อทดลองเสร็จให้กด <strong>ตัดการเชื่อมต่อ</strong></li>
+          </ol>
+          <details><summary>แก้ปัญหาการเชื่อมต่อ</summary><p>ถ้าไม่พบ COM ให้เช็กสาย USB และพอร์ต Debug ถ้าเปิดพอร์ตไม่ได้ให้ปิด Serial Monitor หรือโปรแกรมอื่นที่ใช้พอร์ต ถ้าขึ้นว่าไม่พบ HTS221 ให้ตรวจรุ่นของบอร์ดและขา I²C SDA 41 / SCL 40</p></details>
+        </article>
+      </div>
+    </section>
+  </main>
+  <footer class="site-footer">
+    <div class="frame footer-inner"><span>Microclimate Lab · CN466</span><div><a href="https://github.com/vsupacha/aiot-for-beginners">ตัวอย่างรายวิชา</a><a href="https://developer.chrome.com/docs/capabilities/serial/">Web Serial</a></div></div>
+  </footer>
+</body>
+</html>
